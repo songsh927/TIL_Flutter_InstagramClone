@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/rendering.dart';
 
 void main() {
   runApp(
@@ -21,10 +22,23 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var tab = 0;
+  var data = [];
 
-  getData() async{
-    var result = await http.get(Uri.parse('https://codingapple1.github.io/app/data.json'));
-    print(jsonDecode(result.body));
+  getData() async {
+    var story = await http.get(Uri.parse('https://codingapple1.github.io/app/data.json'));
+    if (story.statusCode == 200){
+      setState(() {
+        data = jsonDecode(story.body);
+      });
+    }else{
+      data.add('서버오류');
+    }
+  }
+
+  addData(moreData) {
+    setState(() {
+      data.add(moreData);
+    });
   }
 
   @override
@@ -41,14 +55,18 @@ class _MyAppState extends State<MyApp> {
         actions: [
           IconButton(
             icon: Icon(Icons.add_box_outlined),
-            onPressed: (){},
+            onPressed: (){
+              Navigator.push(context,
+                MaterialPageRoute(builder: (context) => Upload() )
+              );
+            },
             iconSize: 30,
           )
         ]
       ),
 
       body: [
-        StoryUI(),    //홈화면
+        StoryUI(data : data , addData : addData),    //홈화면
         Text('샵')     //샵화면
       ][tab],
 
@@ -77,46 +95,85 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-class StoryUI extends StatelessWidget {
-  const StoryUI({Key? key}) : super(key: key);
+class Upload extends StatelessWidget {
+  const Upload({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(itemCount: 10, itemBuilder: (c, i){
-      return Container(
-          width: double.infinity, height: 600,
-          alignment: Alignment.bottomLeft,
-          child: Column(
-            children: [
-              Container(
-                //padding: EdgeInsets.all(10),
-                margin: EdgeInsets.only(bottom: 10),
-                child: Image.asset('IMG_3504.jpeg'),
-              ),
-              Container(
-                margin: EdgeInsets.all(10),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    SizedBox(
-                        width: double.infinity,
-                        child: Text('좋아요 100', style: TextStyle(fontWeight: FontWeight.w900),)
-                    ),
-                    SizedBox(
-                        width: double.infinity,
-                        child: Text('글쓴이')
-                    ),
-                    SizedBox(
-                        width: double.infinity,
-                        child: Text('글내용')
-                    )
-                  ],
-                ),
-              )
-            ],
-          )
-      );
-    }
+    return Scaffold(
+      appBar: AppBar(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('이미지업로드화면'),
+          IconButton(
+              onPressed: (){
+                Navigator.pop(context);
+              },
+              icon: Icon(Icons.close))
+        ],
+      ),
     );
+  }
+}
+
+
+class StoryUI extends StatefulWidget {
+  const StoryUI({Key? key, this.data, this.addData}) : super(key: key);
+  final data;
+  final addData;
+
+  @override
+  State<StoryUI> createState() => _StoryUIState();
+}
+
+class _StoryUIState extends State<StoryUI> {
+  var scroll = ScrollController();
+
+  getMore(int reqtime) async{
+    var result = await http.get(Uri.parse('https://codingapple1.github.io/app/more${reqtime}.json'));
+    widget.addData(jsonDecode(result.body));
+  }
+
+  @override
+  void initState() {
+    int reqtime = 1;
+    super.initState();
+    scroll.addListener(() {
+      if (scroll.position.pixels == scroll.position.maxScrollExtent){
+        getMore(reqtime);
+        reqtime++;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    if(widget.data.isNotEmpty){
+      return ListView.builder(itemCount: widget.data.length, controller: scroll , itemBuilder: (c, i) {
+        return Column(
+          children: [
+            Image.network(widget.data[i]['image']),
+            Container(
+              constraints: BoxConstraints(maxWidth: 600),
+              padding: EdgeInsets.all(20),
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('좋아요 ${widget.data[i]['likes'].toString()}'),
+                  Text(widget.data[i]['user']),
+                  Text(widget.data[i]['content'])
+                ],
+              ),
+            )
+          ],
+        );
+      }
+      );
+    }else{
+      return CircularProgressIndicator();
+    }
   }
 }
