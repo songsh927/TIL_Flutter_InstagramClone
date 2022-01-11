@@ -3,6 +3,9 @@ import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/rendering.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(
@@ -23,6 +26,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   var tab = 0;
   var data = [];
+  var userImage;
 
   getData() async {
     var story = await http.get(Uri.parse('https://codingapple1.github.io/app/data.json'));
@@ -50,14 +54,23 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       appBar: AppBar(
         title: Text('Instagram'),
         actions: [
           IconButton(
             icon: Icon(Icons.add_box_outlined),
-            onPressed: (){
+            onPressed: () async {
+              var picker = ImagePicker();
+              var image = await picker.pickImage(source: ImageSource.gallery);
+              if(image != null){
+                setState(() {
+                  userImage = File(image.path);
+                });
+              }
+
               Navigator.push(context,
-                MaterialPageRoute(builder: (context) => Upload() )
+                MaterialPageRoute(builder: (context) => Upload(userImage : userImage , addData: addData,) )
               );
             },
             iconSize: 30,
@@ -96,21 +109,52 @@ class _MyAppState extends State<MyApp> {
 }
 
 class Upload extends StatelessWidget {
-  const Upload({Key? key}) : super(key: key);
+  Upload({Key? key , this.userImage, this.addData}) : super(key: key);
+  final addData;
+  final userImage;
+  DateTime now = DateTime.now();
+  var storyText = TextEditingController();
+  var newStory = {
+    "id": 960927,
+    "image":"",
+    "likes":0,
+    "date":"",
+    "content": "",
+    "liked": false,
+    "user": "Me"
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Image.file(userImage),
           Text('이미지업로드화면'),
-          IconButton(
-              onPressed: (){
-                Navigator.pop(context);
-              },
-              icon: Icon(Icons.close))
+          TextField(controller: storyText,),
+          Row(
+            children: [
+              IconButton(
+                  onPressed: (){
+                    Navigator.pop(context);
+                  },
+                  icon: Icon(Icons.close)),
+              IconButton(
+                onPressed: (){
+                  newStory['image'] = userImage;
+                  newStory['content'] = storyText.text;
+                  newStory['date'] = DateFormat.yMMMMd().format(now);
+                  addData(newStory);
+                  Navigator.pop(context);
+                },
+                icon: Icon(Icons.add_box),
+              )
+            ],
+          ),
+
         ],
       ),
     );
@@ -154,7 +198,8 @@ class _StoryUIState extends State<StoryUI> {
       return ListView.builder(itemCount: widget.data.length, controller: scroll , itemBuilder: (c, i) {
         return Column(
           children: [
-            Image.network(widget.data[i]['image']),
+            widget.data[i]['image'].runtimeType == String
+            ? Image.network(widget.data[i]['image']) : Image.file(widget.data[i]['image']),
             Container(
               constraints: BoxConstraints(maxWidth: 600),
               padding: EdgeInsets.all(20),
