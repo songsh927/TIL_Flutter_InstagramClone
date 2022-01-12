@@ -6,12 +6,20 @@ import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(
-      MaterialApp(
-          theme: style.theme,
-          home: MyApp()
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (c) => Store1()),
+          ChangeNotifierProvider(create: (c) => Store2()),
+        ],
+        child: MaterialApp(
+            theme: style.theme,
+            home: MyApp()
+        ),
       )
   );
 }
@@ -37,6 +45,13 @@ class _MyAppState extends State<MyApp> {
     }else{
       data.add('서버오류');
     }
+  }
+
+  saveData() async{
+    var storage = await SharedPreferences.getInstance();
+    storage.setString('name', 'john');
+    var a = storage.get('name');
+    print(a);
   }
 
   addData(moreData) {
@@ -207,8 +222,15 @@ class _StoryUIState extends State<StoryUI> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  GestureDetector(
+                    child: Text(widget.data[i]['user']),
+                    onTap: (){
+                      Navigator.push(context,
+                      MaterialPageRoute(builder: (c) => Profile() ));
+                    },
+                  ),
                   Text('좋아요 ${widget.data[i]['likes'].toString()}'),
-                  Text(widget.data[i]['user']),
+                  Text(widget.data[i]['date']),
                   Text(widget.data[i]['content'])
                 ],
               ),
@@ -220,5 +242,54 @@ class _StoryUIState extends State<StoryUI> {
     }else{
       return CircularProgressIndicator();
     }
+  }
+}
+
+class Store1 extends ChangeNotifier{
+  var follower = 0;
+  var status = '팔로우';
+  var profileImage = [];
+  
+  getData() async{
+    var result = await http.get(Uri.parse('https://codingapple1.github.io/app/profile.json'));
+    var result2 = jsonDecode(result.body);
+    profileImage = result2;
+    notifyListeners();
+  }
+  
+  pressFollow(){
+    if (status == '팔로우'){
+      follower++;
+      status = '팔로잉';
+    }else{
+      follower--;
+      status = '팔로우';
+    }
+    notifyListeners();
+  }
+}
+
+class Store2 extends ChangeNotifier{
+  var name = 'John Kim';
+}
+
+class Profile extends StatelessWidget {
+  const Profile({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(context.watch<Store2>().name),),
+      body: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Icon(Icons.account_circle , size: 45,),
+          Text('팔로워 ${context.watch<Store1>().follower.toString()}'),
+          ElevatedButton(onPressed: (){
+            context.read<Store1>().pressFollow();
+          }, child: Text(context.watch<Store1>().status))
+        ],
+      ),
+    );
   }
 }
