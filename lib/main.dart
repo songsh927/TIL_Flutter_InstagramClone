@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:instagram/notification.dart';
 import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -63,12 +64,14 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState(){
     super.initState();
+    initNotifications(context);
     getData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(child: Text('+'),onPressed: (){showNotifications2();},),
 
       appBar: AppBar(
         title: Text('Instagram'),
@@ -225,8 +228,11 @@ class _StoryUIState extends State<StoryUI> {
                   GestureDetector(
                     child: Text(widget.data[i]['user']),
                     onTap: (){
-                      Navigator.push(context,
-                      MaterialPageRoute(builder: (c) => Profile() ));
+                      context.read<Store1>().getData();
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (c) => Profile() )
+                      );
                     },
                   ),
                   Text('좋아요 ${widget.data[i]['likes'].toString()}'),
@@ -254,6 +260,7 @@ class Store1 extends ChangeNotifier{
     var result = await http.get(Uri.parse('https://codingapple1.github.io/app/profile.json'));
     var result2 = jsonDecode(result.body);
     profileImage = result2;
+    print(result2);
     notifyListeners();
   }
   
@@ -280,16 +287,37 @@ class Profile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(context.watch<Store2>().name),),
-      body: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Icon(Icons.account_circle , size: 45,),
-          Text('팔로워 ${context.watch<Store1>().follower.toString()}'),
-          ElevatedButton(onPressed: (){
-            context.read<Store1>().pressFollow();
-          }, child: Text(context.watch<Store1>().status))
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: ProfileHeader(),
+          ),
+          SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                    (c,i) => Image.network(context.watch<Store1>().profileImage[i]),
+                    childCount: context.watch<Store1>().profileImage.length,
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2))
         ],
-      ),
+      )
+    );
+  }
+}
+
+class ProfileHeader extends StatelessWidget {
+  const ProfileHeader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        Icon(Icons.account_circle , size: 45,),
+        Text('팔로워 ${context.watch<Store1>().follower.toString()}'),
+        ElevatedButton(onPressed: (){
+          context.read<Store1>().pressFollow();
+        }, child: Text(context.watch<Store1>().status))
+      ],
     );
   }
 }
