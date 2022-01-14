@@ -9,8 +9,19 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import './shop.dart';
 
-void main() {
+
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(
       MultiProvider(
         providers: [
@@ -70,6 +81,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+
+    //print(MediaQuery.of(context).size.width);
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(child: Text('+'),onPressed: (){showNotifications2();},),
 
@@ -98,7 +112,7 @@ class _MyAppState extends State<MyApp> {
 
       body: [
         StoryUI(data : data , addData : addData),    //홈화면
-        Text('샵')     //샵화면
+        Shop()     //샵화면
       ][tab],
 
       bottomNavigationBar: BottomNavigationBar(
